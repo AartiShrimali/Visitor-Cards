@@ -1,0 +1,7 @@
+{
+  "name": "Copy of vcardpro",
+  "description": "Scan ID cards, extract contact details using Gemini AI, and sync to Google Sheets.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
