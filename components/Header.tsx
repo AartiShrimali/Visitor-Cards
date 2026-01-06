@@ -5,10 +5,9 @@ import { isCloudConnected } from '../services/firebaseService';
 
 interface HeaderProps {
   user?: UserProfile | null;
-  onShowAnalytics?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ user, onShowAnalytics }) => {
+export const Header: React.FC<HeaderProps> = ({ user }) => {
   const connected = isCloudConnected();
 
   return (
@@ -32,15 +31,14 @@ export const Header: React.FC<HeaderProps> = ({ user, onShowAnalytics }) => {
           </div>
 
           <div className="flex items-center gap-3">
-            <button 
-              onClick={onShowAnalytics}
-              className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors cursor-pointer hover:bg-white/5 ${connected ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-amber-500/10 border-amber-500/20'}`}
+            <div 
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-md border transition-colors ${connected ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-amber-500/10 border-amber-500/20'}`}
             >
               <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></div>
               <span className={`text-[8px] font-black uppercase tracking-widest ${connected ? 'text-emerald-400' : 'text-amber-400'}`}>
                 {connected ? 'Cloud Active' : 'Local Mode'}
               </span>
-            </button>
+            </div>
             
             {user && (
               <div className="hidden md:flex flex-col items-end opacity-60">

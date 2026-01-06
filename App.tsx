@@ -4,7 +4,6 @@ import { Header } from './components/Header';
 import { Camera } from './components/Camera';
 import { ContactCard } from './components/ContactCard';
 import { ContactHistoryTable } from './components/ContactHistoryTable';
-import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { Button } from './components/Button';
 import { 
   AppState, 
@@ -26,7 +25,6 @@ const App: React.FC = () => {
   const [contacts, setContacts] = useState<ContactData[]>([]);
   const [error, setError] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
-  const [showAnalytics, setShowAnalytics] = useState(false);
   
   const [batchTotal, setBatchTotal] = useState(0);
   const [batchCurrent, setBatchCurrent] = useState(0);
@@ -142,10 +140,8 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans selection:bg-emerald-100 selection:text-emerald-900">
-      <Header user={user} onShowAnalytics={() => setShowAnalytics(true)} />
+      <Header user={user} />
       
-      {showAnalytics && <AnalyticsDashboard onClose={() => setShowAnalytics(false)} />}
-
       <main className="flex-grow container mx-auto px-4 py-6 md:py-8">
         {appState === AppState.IDLE && (
           <div className="max-w-2xl mx-auto text-center space-y-6 py-4">
