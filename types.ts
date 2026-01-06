@@ -1,6 +1,4 @@
 
-// types.ts
-
 export interface ContactData {
   id?: string;
   userId?: string; 
@@ -13,6 +11,7 @@ export interface ContactData {
   phone_2: string;
   address: string;
   timestamp?: any;
+  createdAt?: any;
   processingTimeMs?: number; 
 }
 
@@ -33,7 +32,6 @@ export interface UserProfile {
   email: string;
   picture?: string;
   
-  // Analytics Fields
   stats?: {
     scanCount: number;       
     totalScanTimeMs: number; 
@@ -55,8 +53,6 @@ declare global {
     gapi: any;
   }
 }
-
-/// <reference types="vite/client" />
 
 interface ImportMetaEnv {
   readonly VITE_API_KEY: string;

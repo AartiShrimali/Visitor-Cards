@@ -15,9 +15,17 @@ export const ContactHistoryTable: React.FC<ContactHistoryTableProps> = ({ histor
     return null;
   }
 
+  const formatTimestamp = (contact: ContactData) => {
+    if (contact.createdAt?.toDate) return contact.createdAt.toDate().toLocaleString();
+    if (contact.timestamp instanceof Date) return contact.timestamp.toLocaleString();
+    if (typeof contact.timestamp === 'string') return new Date(contact.timestamp).toLocaleString();
+    return 'Recent';
+  };
+
   const downloadCSV = () => {
-    const headers = ["Name", "Company", "Role", "Email", "Phone", "Address"];
+    const headers = ["Date", "Name", "Company", "Role", "Email", "Phone", "Address"];
     const rows = history.map(contact => [
+      `"${formatTimestamp(contact)}"`,
       `"${contact.name || ''}"`,
       `"${contact.company_name || ''}"`,
       `"${contact.designation || ''}"`,
@@ -38,10 +46,7 @@ export const ContactHistoryTable: React.FC<ContactHistoryTableProps> = ({ histor
   };
 
   const emailHistory = () => {
-    // Subject for the email
     const subject = encodeURIComponent(`MCCIA BizScan Report - ${history.length} Business Contacts`);
-    
-    // Constructing a structured plain text body for maximum compatibility with mailto
     let bodyText = `Hello,\n\nI am sharing business contact details extracted using MCCIA BizScan.\n\n`;
     bodyText += `--- REPORT OVERVIEW ---\n`;
     bodyText += `Total Records: ${history.length}\n`;
@@ -49,18 +54,16 @@ export const ContactHistoryTable: React.FC<ContactHistoryTableProps> = ({ histor
     
     history.forEach((c, i) => {
       bodyText += `[Contact #${i + 1}]\n`;
+      bodyText += `Date: ${formatTimestamp(c)}\n`;
       bodyText += `Name: ${c.name || 'N/A'}\n`;
       bodyText += `Company: ${c.company_name || 'N/A'}\n`;
       bodyText += `Role: ${c.designation || 'N/A'}\n`;
       bodyText += `Email: ${c.email_1 || 'N/A'}\n`;
       bodyText += `Phone: ${c.phone_1 || 'N/A'}\n`;
-      bodyText += `Address: ${c.address || 'N/A'}\n`;
       bodyText += `--------------------------------\n\n`;
     });
     
     bodyText += `\nExtracted using MCCIA APPLIED AI STUDIO BizScan Engine.`;
-    
-    // Opens user's native email client to send from their identity
     const mailtoLink = `mailto:?subject=${subject}&body=${encodeURIComponent(bodyText)}`;
     window.location.href = mailtoLink;
   };
@@ -82,7 +85,6 @@ export const ContactHistoryTable: React.FC<ContactHistoryTableProps> = ({ histor
             variant="outline"
             className="flex-1 sm:flex-none text-[10px] font-black uppercase tracking-wider py-2.5 px-5 bg-white border-slate-200 text-[#003366] hover:bg-slate-50 shadow-sm"
           >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
             Email Report
           </Button>
 
@@ -91,7 +93,6 @@ export const ContactHistoryTable: React.FC<ContactHistoryTableProps> = ({ histor
             variant="outline"
             className="flex-1 sm:flex-none text-[10px] font-black uppercase tracking-wider py-2.5 px-5 bg-emerald-50 border-emerald-100 text-[#059669] hover:bg-emerald-100 shadow-sm"
           >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0L8 8m4-4v12" /></svg>
             Export CSV
           </Button>
         </div>
@@ -101,7 +102,7 @@ export const ContactHistoryTable: React.FC<ContactHistoryTableProps> = ({ histor
         <table className="min-w-full divide-y divide-slate-100">
           <thead className="bg-slate-50/50">
             <tr>
-              <th scope="col" className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Name</th>
+              <th scope="col" className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Date / Name</th>
               <th scope="col" className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Company / Role</th>
               <th scope="col" className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Contact Details</th>
               <th scope="col" className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Office Address</th>
@@ -109,8 +110,9 @@ export const ContactHistoryTable: React.FC<ContactHistoryTableProps> = ({ histor
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
             {history.map((contact, index) => (
-              <tr key={index} className="hover:bg-slate-50/40 transition-colors">
+              <tr key={contact.id || index} className="hover:bg-slate-50/40 transition-colors">
                 <td className="px-6 py-5 align-top">
+                  <div className="text-[9px] text-slate-400 font-bold mb-1">{formatTimestamp(contact)}</div>
                   <div className="text-sm font-black text-[#003366]">{contact.name}</div>
                 </td>
                 <td className="px-6 py-5 align-top">
@@ -119,12 +121,10 @@ export const ContactHistoryTable: React.FC<ContactHistoryTableProps> = ({ histor
                 </td>
                 <td className="px-6 py-5 align-top">
                   <div className="text-[10px] text-slate-600 space-y-1">
-                    <div className="font-bold flex items-center gap-1.5">
-                      <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                    <div className="font-bold flex items-center gap-1.5 line-clamp-1">
                       {contact.email_1}
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
                       {contact.phone_1}
                     </div>
                   </div>
