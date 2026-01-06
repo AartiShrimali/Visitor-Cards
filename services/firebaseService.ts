@@ -59,13 +59,11 @@ export const logAnalyticsEvent = (eventName: string, params?: { [key: string]: a
   }
 };
 
-// Fix: Added missing loginUser export to handle user authentication
 export const loginUser = async (email: string, password: string) => {
   if (!auth) throw new Error("Firebase Auth not initialized");
   return auth.signInWithEmailAndPassword(email, password);
 };
 
-// Fix: Added missing registerUser export to handle new user creation and profile setup in Firestore
 export const registerUser = async (email: string, password: string, name: string, phone: string, isMember: string) => {
   if (!auth || !db) throw new Error("Firebase Auth/Firestore not initialized");
   const userCredential = await auth.createUserWithEmailAndPassword(email, password);
@@ -77,6 +75,8 @@ export const registerUser = async (email: string, password: string, name: string
       email,
       phone,
       isMember,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      lastActive: firebase.firestore.FieldValue.serverTimestamp(),
       stats: {
         scanCount: 0,
         totalScanTimeMs: 0,
@@ -105,10 +105,19 @@ export const saveContactToFirebase = async (
 
   if (db) {
     try {
-      const docRef = await db.collection("users").doc(userId).collection("contacts").add({
+      // Store in sub-collection 'scanned_data' under the user document as requested
+      const docRef = await db.collection("users").doc(userId).collection("scanned_data").add({
         ...contactWithMeta,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
       });
+      
+      // Update user stats
+      await db.collection("users").doc(userId).update({
+        "stats.scanCount": firebase.firestore.FieldValue.increment(1),
+        "stats.totalScanTimeMs": firebase.firestore.FieldValue.increment(processingTimeMs),
+        "lastActive": firebase.firestore.FieldValue.serverTimestamp()
+      });
+
       logAnalyticsEvent('scan_complete', { duration_ms: processingTimeMs });
       return docRef.id;
     } catch (e) {
@@ -128,7 +137,8 @@ export const subscribeToContacts = (userId: string, onUpdate: (contacts: Contact
   let unsubscribeFirebase = () => {};
   
   if (db && userId) {
-    const userContactsRef = db.collection("users").doc(userId).collection("contacts");
+    // Listen to the 'scanned_data' sub-collection
+    const userContactsRef = db.collection("users").doc(userId).collection("scanned_data");
     unsubscribeFirebase = userContactsRef.onSnapshot((querySnapshot) => {
       const contacts: ContactData[] = [];
       querySnapshot.forEach((doc) => {
