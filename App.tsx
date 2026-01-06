@@ -90,11 +90,9 @@ const App: React.FC = () => {
           const result = await extractContactInfo(base64);
           const duration = Date.now() - start;
           
-          // Auto-save each card in batch mode
           await saveContactToFirebase(result, user.uid, user.name, user.email, duration);
         } catch (err) {
           console.error(`Batch item ${i + 1} failed:`, err);
-          // We continue the batch even if one card fails
         }
       }
       
@@ -124,52 +122,50 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans selection:bg-emerald-100 selection:text-emerald-900">
       <Header user={user} />
       
-      <main className="flex-grow container mx-auto px-4 py-6 md:py-10">
+      <main className="flex-grow container mx-auto px-4 py-8 md:py-12">
         {appState === AppState.IDLE && (
-          <div className="max-w-4xl mx-auto text-center space-y-10 py-6">
+          <div className="max-w-3xl mx-auto text-center space-y-8 py-4">
             <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase tracking-[0.2em] mb-1 border border-emerald-100 shadow-sm">
-                <span className="relative flex h-1.5 w-1.5">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-wider mb-1 border border-emerald-100 shadow-sm">
+                <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
-                Secure AI Scanner
+                Active Engine
               </div>
-              <h2 className="text-2xl md:text-4xl font-black text-[#003366] tracking-tight leading-tight uppercase">
+              <h2 className="text-xl md:text-2xl font-black text-[#003366] tracking-tight leading-tight uppercase">
                 MCCIA BIZSCAN <br/>
                 <span className="text-[#10b981]">AI POWERED BUSINESS CARD SCANNER</span>
               </h2>
-              <p className="text-base text-slate-500 max-w-xl mx-auto font-medium">
-                Professional extraction and management of business contacts. <br/>
-                Process single cards or batch uploads up to 50 cards.
+              <p className="text-sm md:text-base text-slate-500 max-w-lg mx-auto font-medium">
+                Professional extraction for business cards. Scan single cards or batch-upload up to 50 cards for automated processing.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-xl mx-auto">
               <button 
                 onClick={() => setAppState(AppState.SCANNING)}
-                className="group flex flex-col items-center justify-center p-10 bg-white border border-slate-200 rounded-[2rem] hover:border-[#10b981] hover:shadow-xl transition-all duration-300"
+                className="group flex flex-col items-center justify-center p-8 bg-white border border-slate-200 rounded-[1.5rem] hover:border-[#10b981] hover:shadow-lg transition-all duration-300"
               >
-                <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-emerald-500 transition-all duration-300">
-                  <svg className="w-8 h-8 text-[#10b981] group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-14 h-14 bg-emerald-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-emerald-500 transition-all duration-300">
+                  <svg className="w-7 h-7 text-[#10b981] group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <circle cx="12" cy="13" r="3" strokeWidth={2} />
                   </svg>
                 </div>
-                <span className="text-xl font-black text-[#003366]">Use Camera</span>
-                <span className="text-[10px] text-slate-400 mt-1 font-bold uppercase tracking-widest">Single Capture</span>
+                <span className="text-lg font-black text-[#003366]">Use Camera</span>
+                <span className="text-[10px] text-slate-400 mt-1 font-bold uppercase tracking-widest">Single Card</span>
               </button>
 
               <button 
                 onClick={() => fileInputRef.current?.click()}
-                className="group flex flex-col items-center justify-center p-10 bg-white border border-slate-200 rounded-[2rem] hover:border-[#003366] hover:shadow-xl transition-all duration-300"
+                className="group flex flex-col items-center justify-center p-8 bg-white border border-slate-200 rounded-[1.5rem] hover:border-[#003366] hover:shadow-lg transition-all duration-300"
               >
-                <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-[#003366] transition-all duration-300">
-                  <svg className="w-8 h-8 text-[#003366] group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-[#003366] transition-all duration-300">
+                  <svg className="w-7 h-7 text-[#003366] group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                   </svg>
                 </div>
-                <span className="text-xl font-black text-[#003366]">Upload Photo</span>
+                <span className="text-lg font-black text-[#003366]">Upload Photos</span>
                 <span className="text-[10px] text-slate-400 mt-1 font-bold uppercase tracking-widest">Max 50 Cards</span>
               </button>
             </div>
@@ -192,26 +188,26 @@ const App: React.FC = () => {
         )}
 
         {appState === AppState.PROCESSING && (
-          <div className="flex flex-col items-center justify-center py-20 space-y-6 max-w-lg mx-auto text-center">
-            <div className="w-16 h-16 border-4 border-[#10b981] border-t-transparent rounded-full animate-spin"></div>
+          <div className="flex flex-col items-center justify-center py-20 space-y-6 text-center">
+            <div className="w-12 h-12 border-4 border-[#10b981] border-t-transparent rounded-full animate-spin"></div>
             <div>
-              <h3 className="text-2xl font-black text-[#003366]">Analyzing Card...</h3>
-              <p className="text-slate-500 mt-1 font-medium">Gemini 3 is extracting contact details</p>
+              <h3 className="text-xl font-black text-[#003366]">Scanning Card...</h3>
+              <p className="text-sm text-slate-500 font-medium">Extracting details using Gemini 3</p>
             </div>
           </div>
         )}
 
         {appState === AppState.BATCH_PROCESSING && (
-          <div className="flex flex-col items-center justify-center py-20 space-y-8 max-w-xl mx-auto text-center">
-            <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden shadow-inner max-w-sm">
+          <div className="flex flex-col items-center justify-center py-20 space-y-6 max-w-xl mx-auto text-center">
+            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden max-w-sm">
               <div 
                 className="bg-[#10b981] h-full transition-all duration-500"
                 style={{ width: `${(batchCurrent / batchTotal) * 100}%` }}
               ></div>
             </div>
             <div>
-              <h3 className="text-3xl font-black text-[#003366]">Batch Scan Active</h3>
-              <p className="text-lg text-slate-500 mt-2 font-bold uppercase tracking-widest">
+              <h3 className="text-2xl font-black text-[#003366]">Batch Uploading</h3>
+              <p className="text-sm text-slate-500 mt-2 font-bold uppercase tracking-widest">
                 Card <span className="text-[#10b981]">{batchCurrent}</span> of {batchTotal}
               </p>
             </div>
@@ -228,25 +224,25 @@ const App: React.FC = () => {
         )}
 
         {appState === AppState.SUCCESS && (
-          <div className="max-w-sm mx-auto bg-white border border-emerald-100 p-8 rounded-[2rem] text-center shadow-xl animate-in zoom-in duration-500">
-            <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-emerald-100">
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+          <div className="max-w-sm mx-auto bg-white border border-emerald-100 p-8 rounded-[1.5rem] text-center shadow-lg animate-in zoom-in duration-300">
+            <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-md shadow-emerald-50">
+              <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
             </div>
-            <h3 className="text-xl font-black text-[#003366]">Data Synced</h3>
-            <p className="text-slate-500 mt-2 font-medium">Information added to history.</p>
+            <h3 className="text-lg font-black text-[#003366]">Scan Successful</h3>
+            <p className="text-xs text-slate-500 mt-1 font-medium">Data saved to history.</p>
           </div>
         )}
 
         {appState === AppState.ERROR && (
-          <div className="max-w-md mx-auto bg-white border border-red-100 p-8 rounded-[2rem] text-center shadow-lg">
-            <h3 className="text-xl font-black text-slate-800">Scan Failed</h3>
-            <p className="text-slate-500 mt-2 font-medium mb-6">{error}</p>
-            <Button onClick={() => setAppState(AppState.IDLE)} className="w-full bg-[#003366] text-white py-3 font-bold rounded-xl">Dismiss</Button>
+          <div className="max-w-md mx-auto bg-white border border-red-100 p-8 rounded-[1.5rem] text-center shadow-lg">
+            <h3 className="text-lg font-black text-slate-800">Scan Failed</h3>
+            <p className="text-xs text-slate-500 mt-1 font-medium mb-6">{error}</p>
+            <Button onClick={() => setAppState(AppState.IDLE)} className="w-full bg-[#003366] text-white py-2.5 font-bold rounded-lg">Try Again</Button>
           </div>
         )}
 
         {contacts.length > 0 && (
-          <div className="mt-12 bg-white rounded-[1.5rem] p-1 shadow-lg border border-slate-100 overflow-hidden">
+          <div className="mt-12 bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
             <ContactHistoryTable 
               history={contacts} 
               userName={user.name} 
@@ -258,17 +254,17 @@ const App: React.FC = () => {
 
       <button 
         onClick={() => setShowAnalytics(true)}
-        className="fixed bottom-6 right-6 w-12 h-12 bg-[#003366] text-white rounded-xl shadow-2xl flex items-center justify-center hover:scale-105 transition-all z-40"
-        title="Dashboard Stats"
+        className="fixed bottom-6 right-6 w-10 h-10 bg-[#003366] text-white rounded-lg shadow-xl flex items-center justify-center hover:bg-[#10b981] transition-all z-40"
+        title="Stats"
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
       </button>
 
       {showAnalytics && <AnalyticsDashboard onClose={() => setShowAnalytics(false)} />}
       
       <footer className="bg-white border-t border-slate-50 py-6 text-center mt-auto">
-         <p className="text-[9px] text-slate-400 font-black uppercase tracking-[0.3em]">
-           © {new Date().getFullYear()} MCCIA Applied AI Studio • Secure Extraction Engine
+         <p className="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em]">
+           © {new Date().getFullYear()} MCCIA Applied AI Studio • Secure Engine
          </p>
       </footer>
     </div>
