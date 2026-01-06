@@ -2,17 +2,16 @@
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import "firebase/compat/firestore";
-import "firebase/compat/analytics";
-import "firebase/compat/performance";
 import { ContactData, UserProfile } from "../types";
 
+// Robust environment variable accessor for Vite/Studio environments
 const getEnv = (key: string) => {
-  const env = (import.meta as any).env;
-  if (env && env[key]) return env[key];
-  if (typeof process !== 'undefined' && process.env) {
-    if ((process.env as any)[key]) return (process.env as any)[key];
-    const noViteKey = key.replace('VITE_', '');
-    if ((process.env as any)[noViteKey]) return (process.env as any)[noViteKey];
+  if (typeof process !== 'undefined' && process.env && (process.env as any)[key]) {
+    return (process.env as any)[key];
+  }
+  const metaEnv = (import.meta as any).env;
+  if (metaEnv && metaEnv[key]) {
+    return metaEnv[key];
   }
   return '';
 };
@@ -28,10 +27,10 @@ const firebaseConfig = {
 
 let db: firebase.firestore.Firestore | null = null;
 let auth: firebase.auth.Auth | null = null;
-let analytics: firebase.analytics.Analytics | null = null;
 
-const LOCAL_STORAGE_KEY = 'mccia_permanent_contacts';
+const STUDIO_SESSION_KEY = 'mccia_studio_device_id';
 
+// Initialize Firebase
 try {
   if (firebaseConfig.apiKey && firebaseConfig.projectId) {
     if (!firebase.apps.length) {
@@ -40,43 +39,65 @@ try {
     const app = firebase.app();
     db = app.firestore();
     auth = app.auth();
-    
-    if (typeof window !== 'undefined') {
-      try {
-        analytics = app.analytics();
-      } catch (e) {}
-    }
-  } else {
-    console.warn("Firebase config missing - Using Local Storage mode.");
+    console.log("Cloud Database Engine initialized.");
   }
 } catch (error) {
-  console.error("Firebase init failed:", error);
+  console.error("Cloud initialization error:", error);
 }
 
-export const logAnalyticsEvent = (eventName: string, params?: { [key: string]: any }) => {
-  if (analytics) {
-    try { analytics.logEvent(eventName, params); } catch (e) {}
+/**
+ * Automatically initializes a session for the device without UI login.
+ * It generates a unique ID for this browser and stores it in localStorage.
+ */
+export const initStudioSession = async (): Promise<UserProfile> => {
+  let deviceId = localStorage.getItem(STUDIO_SESSION_KEY);
+  
+  if (!deviceId) {
+    // Generate a new unique ID if one doesn't exist
+    deviceId = 'studio_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
+    localStorage.setItem(STUDIO_SESSION_KEY, deviceId);
   }
+
+  // If Auth is available, we sign in anonymously to satisfy security rules
+  if (auth) {
+    try {
+      const userCred = await auth.signInAnonymously();
+      const uid = userCred.user?.uid || deviceId;
+      return {
+        uid: uid,
+        name: "Studio Station",
+        email: "auto-session@mccia.org"
+      };
+    } catch (e) {
+      console.warn("Anonymous auth failed, falling back to Device ID.");
+    }
+  }
+
+  return {
+    uid: deviceId,
+    name: "Studio Station",
+    email: "offline-session@mccia.org"
+  };
 };
 
-export const loginUser = async (email: string, password: string) => {
+// Fix: Added missing loginUser function
+export const loginUser = async (email: string, pass: string) => {
   if (!auth) throw new Error("Firebase Auth not initialized");
-  return auth.signInWithEmailAndPassword(email, password);
+  return await auth.signInWithEmailAndPassword(email, pass);
 };
 
-export const registerUser = async (email: string, password: string, name: string, phone: string, isMember: string) => {
-  if (!auth || !db) throw new Error("Firebase Auth/Firestore not initialized");
-  const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-  const user = userCredential.user;
-  if (user) {
-    await db.collection("users").doc(user.uid).set({
-      uid: user.uid,
+// Fix: Added missing registerUser function with profile initialization
+export const registerUser = async (email: string, pass: string, name: string, phone: string, isMember: string) => {
+  if (!auth || !db) throw new Error("Firebase Auth or Firestore not initialized");
+  const userCred = await auth.createUserWithEmailAndPassword(email, pass);
+  const uid = userCred.user?.uid;
+  if (uid) {
+    await db.collection("users").doc(uid).set({
       name,
       email,
       phone,
       isMember,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      lastActive: firebase.firestore.FieldValue.serverTimestamp(),
       stats: {
         scanCount: 0,
         totalScanTimeMs: 0,
@@ -85,61 +106,112 @@ export const registerUser = async (email: string, password: string, name: string
       }
     });
   }
-  return userCredential;
+  return userCred;
 };
 
+// Fix: Added missing fetchGlobalAnalytics function
+export const fetchGlobalAnalytics = async () => {
+  if (!db) throw new Error("Firestore not initialized");
+  
+  const usersSnap = await db.collection("users").get();
+  const users = usersSnap.docs.map(doc => doc.data());
+  
+  const totalUsers = usersSnap.size;
+  const activeUsers = users.filter((u: any) => (u.stats?.scanCount || 0) > 0).length;
+  const totalScansGlobal = users.reduce((acc: number, u: any) => acc + (u.stats?.scanCount || 0), 0);
+  
+  let totalTime = 0;
+  let minTime = Infinity;
+  let maxTime = 0;
+  
+  users.forEach((u: any) => {
+    if (u.stats) {
+      totalTime += (u.stats.totalScanTimeMs || 0);
+      if (u.stats.minScanTimeMs > 0 && u.stats.minScanTimeMs < minTime) minTime = u.stats.minScanTimeMs;
+      if (u.stats.maxScanTimeMs > maxTime) maxTime = u.stats.maxScanTimeMs;
+    }
+  });
+
+  return {
+    totalUsers,
+    loggedInUsers: totalUsers,
+    activeUsers,
+    totalScansGlobal,
+    avgScansPerUser: totalUsers > 0 ? (totalScansGlobal / totalUsers).toFixed(2) : "0",
+    medianScans: 0, 
+    avgTimePerScanMs: totalScansGlobal > 0 ? totalTime / totalScansGlobal : 0,
+    globalMinTimeMs: minTime === Infinity ? 0 : minTime,
+    globalMaxTimeMs: maxTime
+  };
+};
+
+/**
+ * Data Storage logic: users/{deviceId}/scanned_data/DOC
+ */
 export const saveContactToFirebase = async (
   data: ContactData, 
   userId: string, 
-  userName?: string, 
-  userEmail?: string,
   processingTimeMs: number = 0
 ): Promise<string> => {
   const contactWithMeta = {
     ...data,
     userId: userId,
-    createdBy: userName || "Unknown",
     timestamp: new Date(),
-    processingTimeMs: processingTimeMs
+    processingTimeMs: processingTimeMs,
+    source: "Studio BIZSCAN"
   };
 
   if (db) {
     try {
-      // Structure: users/{userId}/scanned_data/ID_CARD_DOC
       const docRef = await db.collection("users").doc(userId).collection("scanned_data").add({
         ...contactWithMeta,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
       });
       
-      // Update basic user stats for convenience
-      await db.collection("users").doc(userId).update({
-        "stats.scanCount": firebase.firestore.FieldValue.increment(1),
-        "stats.totalScanTimeMs": firebase.firestore.FieldValue.increment(processingTimeMs),
-        "lastActive": firebase.firestore.FieldValue.serverTimestamp()
-      });
+      // Fix: Updated to calculate and store running user statistics
+      const userRef = db.collection("users").doc(userId);
+      const userDoc = await userRef.get();
+      const userData = userDoc.data() || {};
+      const stats = userData.stats || { scanCount: 0, totalScanTimeMs: 0, minScanTimeMs: 0, maxScanTimeMs: 0 };
+      
+      const newScanCount = stats.scanCount + 1;
+      const newTotalTime = stats.totalScanTimeMs + processingTimeMs;
+      const newMinTime = stats.minScanTimeMs === 0 ? processingTimeMs : Math.min(stats.minScanTimeMs, processingTimeMs);
+      const newMaxTime = Math.max(stats.maxScanTimeMs, processingTimeMs);
 
-      logAnalyticsEvent('scan_complete', { duration_ms: processingTimeMs });
+      await userRef.set({
+        lastActive: firebase.firestore.FieldValue.serverTimestamp(),
+        deviceType: "Web Studio",
+        stats: {
+          scanCount: newScanCount,
+          totalScanTimeMs: newTotalTime,
+          minScanTimeMs: newMinTime,
+          maxScanTimeMs: newMaxTime
+        }
+      }, { merge: true });
+
       return docRef.id;
     } catch (e) {
-      console.error("Firestore save failed:", e);
+      console.error("Cloud write failed:", e);
+      throw e;
     }
   }
 
-  const existing = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '[]');
+  // Secondary local fallback if Firebase is disconnected
+  const existing = JSON.parse(localStorage.getItem('mccia_local_backup') || '[]');
   const newContact = { ...contactWithMeta, id: `local_${Date.now()}` };
   existing.push(newContact);
-  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(existing));
+  localStorage.setItem('mccia_local_backup', JSON.stringify(existing));
   window.dispatchEvent(new Event('storage_updated'));
   return newContact.id;
 };
 
 export const subscribeToContacts = (userId: string, onUpdate: (contacts: ContactData[]) => void) => {
-  let unsubscribeFirebase = () => {};
+  if (!userId) return () => {};
   
-  if (db && userId) {
-    // Listen to the 'scanned_data' sub-collection as requested
+  if (db) {
     const userContactsRef = db.collection("users").doc(userId).collection("scanned_data");
-    unsubscribeFirebase = userContactsRef.onSnapshot((querySnapshot) => {
+    return userContactsRef.onSnapshot((querySnapshot) => {
       const contacts: ContactData[] = [];
       querySnapshot.forEach((doc) => {
         const d = doc.data();
@@ -151,66 +223,14 @@ export const subscribeToContacts = (userId: string, onUpdate: (contacts: Contact
         return tB - tA;
       });
       onUpdate(contacts);
-    }, (error) => console.error("Firestore listener error:", error));
-  }
-
-  const syncLocal = () => {
-    if (!db) {
-      const local = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '[]');
+    }, (error) => console.error("Cloud read error:", error));
+  } else {
+    const syncLocal = () => {
+      const local = JSON.parse(localStorage.getItem('mccia_local_backup') || '[]');
       onUpdate(local.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
-    }
-  };
-
-  window.addEventListener('storage_updated', syncLocal);
-  syncLocal();
-
-  return () => {
-    unsubscribeFirebase();
-    window.removeEventListener('storage_updated', syncLocal);
-  };
-};
-
-export const fetchGlobalAnalytics = async () => {
-  if (!db) {
-    return {
-      totalUsers: 1,
-      loggedInUsers: 1,
-      activeUsers: 1,
-      totalScansGlobal: JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '[]').length,
-      avgScansPerUser: "0.0",
-      medianScans: 0,
-      avgTimePerScanMs: 0,
-      globalMinTimeMs: 0,
-      globalMaxTimeMs: 0
     };
-  }
-  
-  try {
-    const usersSnap = await db.collection("users").get();
-    let totalUsers = 0, activeUsers = 0, totalScansGlobal = 0, globalTotalTime = 0;
-    
-    usersSnap.forEach(doc => {
-      const data = doc.data();
-      totalUsers++;
-      if (data.stats && data.stats.scanCount > 0) {
-        activeUsers++;
-        totalScansGlobal += data.stats.scanCount;
-        globalTotalTime += data.stats.totalScanTimeMs;
-      }
-    });
-
-    return {
-      totalUsers,
-      loggedInUsers: totalUsers,
-      activeUsers,
-      totalScansGlobal,
-      avgScansPerUser: activeUsers > 0 ? (totalScansGlobal / activeUsers).toFixed(1) : "0",
-      medianScans: 0,
-      avgTimePerScanMs: totalScansGlobal > 0 ? Math.round(globalTotalTime / totalScansGlobal) : 0,
-      globalMinTimeMs: 0,
-      globalMaxTimeMs: 0
-    };
-  } catch (e) {
-    return { totalUsers: 0, activeUsers: 0, totalScansGlobal: 0, avgScansPerUser: "0", medianScans: 0, avgTimePerScanMs: 0, globalMinTimeMs: 0, globalMaxTimeMs: 0 };
+    window.addEventListener('storage_updated', syncLocal);
+    syncLocal();
+    return () => window.removeEventListener('storage_updated', syncLocal);
   }
 };

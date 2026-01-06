@@ -4,7 +4,6 @@ import { UserProfile } from '../types';
 
 interface HeaderProps {
   user?: UserProfile | null;
-  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ user }) => {
@@ -28,17 +27,12 @@ export const Header: React.FC<HeaderProps> = ({ user }) => {
             </div>
           </div>
 
-          {user && (
-            <div className="flex items-center gap-2.5 bg-white/5 py-1 px-3 rounded-lg border border-white/10">
-              <div className="flex flex-col items-end hidden sm:flex">
-                <span className="text-[9px] font-black text-emerald-400 uppercase tracking-wider">{user.name}</span>
-                <span className="text-[7px] font-bold text-slate-400 uppercase">{user.email}</span>
-              </div>
-              <div className="w-7 h-7 rounded bg-emerald-500 text-white flex items-center justify-center font-black text-xs border border-white/20">
-                {user.name.charAt(0)}
-              </div>
+          <div className="flex items-center gap-2.5 bg-white/5 py-1.5 px-3 rounded-lg border border-white/10">
+            <div className="flex flex-col items-end">
+              <span className="text-[8px] font-black text-emerald-400 uppercase tracking-[0.2em]">Studio Live</span>
+              {user && <span className="text-[6px] font-bold text-slate-400 uppercase tracking-widest opacity-60">ID: {user.uid.slice(0, 12)}...</span>}
             </div>
-          )}
+          </div>
         </div>
       </div>
     </nav>
