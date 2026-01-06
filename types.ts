@@ -3,7 +3,7 @@
 
 export interface ContactData {
   id?: string;
-  userId?: string; // Critical for data privacy
+  userId?: string; 
   name: string;
   company_name: string;
   designation: string;
@@ -13,7 +13,7 @@ export interface ContactData {
   phone_2: string;
   address: string;
   timestamp?: any;
-  processingTimeMs?: number; // Track how long Gemini took
+  processingTimeMs?: number; 
 }
 
 export enum AppState {
@@ -23,35 +23,31 @@ export enum AppState {
   REVIEW = 'REVIEW',
   SAVING = 'SAVING',
   SUCCESS = 'SUCCESS',
-  ERROR = 'ERROR',
-  TRIAL_EXPIRED = 'TRIAL_EXPIRED'
+  ERROR = 'ERROR'
 }
 
 export interface UserProfile {
-  uid: string; // Firebase UID
+  uid: string; 
   name: string;
   email: string;
   picture?: string;
-  trialExpiresAt?: number; // Timestamp for 5-day trial end
-  expiryEmailSent?: boolean; // Track if the trial end email has been sent
   
   // Analytics Fields
   stats?: {
-    scanCount: number;       // Total cards scanned
-    totalScanTimeMs: number; // Sum of all processing times (to calc avg)
-    minScanTimeMs: number;   // Fastest scan
-    maxScanTimeMs: number;   // Slowest scan
+    scanCount: number;       
+    totalScanTimeMs: number; 
+    minScanTimeMs: number;   
+    maxScanTimeMs: number;   
     lastActive?: any;
   }
 }
 
 export enum AuthStep {
   LOGIN = 'LOGIN',
-  REGISTER_STEP_1 = 'REGISTER_STEP_1', // Name, Email
-  REGISTER_STEP_2 = 'REGISTER_STEP_2'  // Password, Confirm Password
+  REGISTER_STEP_1 = 'REGISTER_STEP_1', 
+  REGISTER_STEP_2 = 'REGISTER_STEP_2'  
 }
 
-// Global declaration for Google APIs loaded via script tags
 declare global {
   interface Window {
     google: any;
@@ -59,7 +55,6 @@ declare global {
   }
 }
 
-// Vite Environment Variables Type Definition
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
@@ -71,7 +66,6 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_STORAGE_BUCKET: string;
   readonly VITE_FIREBASE_MESSAGING_SENDER_ID: string;
   readonly VITE_FIREBASE_APP_ID: string;
-  // Google Apps Script URL for emailing
   readonly VITE_GOOGLE_SCRIPT_URL: string;
 }
 

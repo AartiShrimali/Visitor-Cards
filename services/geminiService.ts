@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { ContactData } from "../types";
 
@@ -17,7 +18,6 @@ const contactSchema = {
   required: ["name", "company_name", "designation", "email_1", "phone_1", "address"],
 };
 
-// Helper: Compress image to save bandwidth (Resize to max 1024px, JPEG 80% quality)
 const compressImage = (base64Str: string, maxWidth = 1024, quality = 0.8): Promise<string> => {
   return new Promise((resolve) => {
     const img = new Image();
@@ -26,55 +26,37 @@ const compressImage = (base64Str: string, maxWidth = 1024, quality = 0.8): Promi
       const canvas = document.createElement('canvas');
       let width = img.width;
       let height = img.height;
-
-      // Calculate new dimensions
       if (width > maxWidth) {
         height = Math.round((height * maxWidth) / width);
         width = maxWidth;
       }
-
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.drawImage(img, 0, 0, width, height);
-        // Returns full data URI
         resolve(canvas.toDataURL('image/jpeg', quality));
       } else {
-        resolve(base64Str); // Fallback
+        resolve(base64Str);
       }
     };
-    img.onerror = () => resolve(base64Str); // Fallback
+    img.onerror = () => resolve(base64Str);
   });
 };
 
+/**
+ * Extracts contact information from an image using Gemini AI
+ */
 export const extractContactInfo = async (base64Image: string): Promise<ContactData> => {
-  // STRICT VALIDATION: Check for key using Vite standard first
-  let apiKey = '';
-  const env = (import.meta as any).env;
-  
-  if (env && env.VITE_API_KEY) {
-    apiKey = env.VITE_API_KEY;
-  } else if (typeof process !== 'undefined' && process.env.API_KEY) {
-    apiKey = process.env.API_KEY;
-  }
-  
-  if (!apiKey || apiKey.length === 0) {
-    console.error("Critical Error: API Key is missing.");
-    throw new Error("API Key Missing. Go to Vercel Settings > Environment Variables and add 'VITE_API_KEY'.");
-  }
+  // Always use process.env.API_KEY directly as per SDK guidelines
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   try {
-    // Initialize the Gemini client
-    const ai = new GoogleGenAI({ apiKey: apiKey });
-
-    // COMPRESS IMAGE BEFORE SENDING
-    // This reduces bandwidth from ~5MB to ~150KB per request
     const compressedImageUri = await compressImage(base64Image);
     const cleanBase64 = compressedImageUri.split(',')[1] || compressedImageUri;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-flash-preview",
       contents: {
         parts: [
           {
@@ -98,19 +80,13 @@ export const extractContactInfo = async (base64Image: string): Promise<ContactDa
     if (response.text) {
       return JSON.parse(response.text) as ContactData;
     } else {
-      throw new Error("No data extracted from the image. The model returned an empty response.");
+      throw new Error("No data extracted from the image.");
     }
   } catch (error: any) {
-    console.error("Gemini Extraction Error Full Details:", error);
-    
-    // Provide user-friendly error messages based on common issues
-    if (error.message && error.message.includes("API key")) {
-       throw new Error("Invalid API Key. Please check your Vercel Environment Variables.");
-    }
+    console.error("Gemini Extraction Error:", error);
     if (error.status === 429) {
-       throw new Error("Too many requests. Please wait a moment and try again.");
+       throw new Error("Too many requests. Please wait a moment.");
     }
-    
     throw error;
   }
 };
