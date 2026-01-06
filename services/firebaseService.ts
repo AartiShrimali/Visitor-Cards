@@ -105,13 +105,13 @@ export const saveContactToFirebase = async (
 
   if (db) {
     try {
-      // Store in sub-collection 'scanned_data' under the user document as requested
+      // Structure: users/{userId}/scanned_data/ID_CARD_DOC
       const docRef = await db.collection("users").doc(userId).collection("scanned_data").add({
         ...contactWithMeta,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
       });
       
-      // Update user stats
+      // Update basic user stats for convenience
       await db.collection("users").doc(userId).update({
         "stats.scanCount": firebase.firestore.FieldValue.increment(1),
         "stats.totalScanTimeMs": firebase.firestore.FieldValue.increment(processingTimeMs),
@@ -137,7 +137,7 @@ export const subscribeToContacts = (userId: string, onUpdate: (contacts: Contact
   let unsubscribeFirebase = () => {};
   
   if (db && userId) {
-    // Listen to the 'scanned_data' sub-collection
+    // Listen to the 'scanned_data' sub-collection as requested
     const userContactsRef = db.collection("users").doc(userId).collection("scanned_data");
     unsubscribeFirebase = userContactsRef.onSnapshot((querySnapshot) => {
       const contacts: ContactData[] = [];
