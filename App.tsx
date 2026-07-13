@@ -16,6 +16,13 @@ import {
   initStudioSession
 } from './services/firebaseService';
 import { extractContactInfo } from './services/geminiService';
+import { 
+  initGapiClient, 
+  initGisClient, 
+  requestAccessToken, 
+  saveToSheet 
+} from './services/googleSheetsService';
+
 
 const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -25,6 +32,9 @@ const App: React.FC = () => {
   const [contacts, setContacts] = useState<ContactData[]>([]);
   const [error, setError] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isGoogleSheetsConnected, setIsGoogleSheetsConnected] = useState(false);
+  const [isGapiLoaded, setIsGapiLoaded] = useState(false);
+
   
   const [batchTotal, setBatchTotal] = useState(0);
   const [batchCurrent, setBatchCurrent] = useState(0);
@@ -45,6 +55,33 @@ const App: React.FC = () => {
     };
     startSession();
   }, []);
+
+  useEffect(() => {
+    const initGoogleApis = async () => {
+      try {
+        await initGapiClient();
+        setIsGapiLoaded(true);
+
+        initGisClient((tokenResponse) => {
+          if (tokenResponse && tokenResponse.access_token) {
+            setIsGoogleSheetsConnected(true);
+          }
+        });
+      } catch (err) {
+        console.warn("Google Google API Client loading failed or script missing.", err);
+      }
+    };
+    initGoogleApis();
+  }, []);
+
+  const handleConnectGoogleSheets = () => {
+    try {
+      requestAccessToken();
+    } catch (error: any) {
+      alert(error.message || "Failed to initialize Google Sheets Sync. Please check your configuration.");
+    }
+  };
+
 
   useEffect(() => {
     if (user) {
@@ -99,6 +136,13 @@ const App: React.FC = () => {
           const duration = Date.now() - start;
           
           await saveContactToFirebase(result, user.uid, duration);
+          if (isGoogleSheetsConnected) {
+            try {
+              await saveToSheet(result);
+            } catch (sheetErr) {
+              console.error(`Failed to save batch item ${i + 1} to Google Sheets:`, sheetErr);
+            }
+          }
         } catch (err) {
           console.error(`Item ${i + 1} failed:`, err);
         }
@@ -118,6 +162,15 @@ const App: React.FC = () => {
 
     try {
       await saveContactToFirebase(data, user.uid, processingTime);
+      
+      if (isGoogleSheetsConnected) {
+        try {
+          await saveToSheet(data);
+        } catch (sheetErr) {
+          console.error("Failed to sync to Google Sheets:", sheetErr);
+        }
+      }
+
       setAppState(AppState.SUCCESS);
       setTimeout(() => setAppState(AppState.IDLE), 3000);
     } catch (err: any) {
@@ -199,6 +252,34 @@ const App: React.FC = () => {
               multiple 
               onChange={handleFileUpload}
             />
+
+            {/* Google Sheets Status Card */}
+            <div className="max-w-md mx-auto bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm hover:shadow-md transition-all duration-300 mt-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isGoogleSheetsConnected ? 'bg-emerald-50' : 'bg-slate-100'}`}>
+                  <svg className={`w-4 h-4 ${isGoogleSheetsConnected ? 'text-emerald-500' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <span className="text-xs font-black text-[#003366] block">Google Sheets Sync</span>
+                  <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">
+                    {isGoogleSheetsConnected ? 'Syncing active' : 'Not connected'}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={handleConnectGoogleSheets}
+                className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all duration-200 border ${
+                  isGoogleSheetsConnected
+                    ? 'border-emerald-100 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                {isGoogleSheetsConnected ? 'Connected' : 'Connect Account'}
+              </button>
+            </div>
+
           </div>
         )}
 
