@@ -5,22 +5,22 @@ import { Camera } from './components/Camera';
 import { ContactCard } from './components/ContactCard';
 import { ContactHistoryTable } from './components/ContactHistoryTable';
 import { Button } from './components/Button';
-import { 
-  AppState, 
-  ContactData, 
-  UserProfile 
+import {
+  AppState,
+  ContactData,
+  UserProfile
 } from './types';
-import { 
-  subscribeToContacts, 
+import {
+  subscribeToContacts,
   saveContactToFirebase,
   initStudioSession
 } from './services/firebaseService';
 import { extractContactInfo } from './services/geminiService';
-import { 
-  initGapiClient, 
-  initGisClient, 
-  requestAccessToken, 
-  saveToSheet 
+import {
+  initGapiClient,
+  initGisClient,
+  requestAccessToken,
+  saveToSheet
 } from './services/googleSheetsService';
 
 
@@ -35,10 +35,10 @@ const App: React.FC = () => {
   const [isGoogleSheetsConnected, setIsGoogleSheetsConnected] = useState(false);
   const [isGapiLoaded, setIsGapiLoaded] = useState(false);
 
-  
+
   const [batchTotal, setBatchTotal] = useState(0);
   const [batchCurrent, setBatchCurrent] = useState(0);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const startTimeRef = useRef<number>(0);
 
@@ -96,7 +96,7 @@ const App: React.FC = () => {
     setAppState(AppState.PROCESSING);
     setError('');
     startTimeRef.current = Date.now();
-    
+
     try {
       const result = await extractContactInfo(base64);
       setScannedData(result);
@@ -128,30 +128,33 @@ const App: React.FC = () => {
           const base64 = await new Promise<string>((resolve) => {
             const reader = new FileReader();
             reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(fileList[i]);
+            reader.readAsDataURL(fileList[i] as File);
           });
-          
+
           const start = Date.now();
           const result = await extractContactInfo(base64);
           const duration = Date.now() - start;
-          
-          await saveContactToFirebase(result, user.uid, duration);
+
+          const batchPromises: Promise<any>[] = [
+            saveContactToFirebase(result, user.uid, duration)
+          ];
           if (isGoogleSheetsConnected) {
-            try {
-              await saveToSheet(result);
-            } catch (sheetErr) {
-              console.error(`Failed to save batch item ${i + 1} to Google Sheets:`, sheetErr);
-            }
+            batchPromises.push(
+              saveToSheet(result).catch((sheetErr) => {
+                console.error(`Failed to save batch item ${i + 1} to Google Sheets:`, sheetErr);
+              })
+            );
           }
+          await Promise.all(batchPromises);
         } catch (err) {
           console.error(`Item ${i + 1} failed:`, err);
         }
       }
-      
+
       setAppState(AppState.SUCCESS);
       setTimeout(() => setAppState(AppState.IDLE), 3000);
     }
-    
+
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -161,15 +164,17 @@ const App: React.FC = () => {
     const processingTime = Date.now() - startTimeRef.current;
 
     try {
-      await saveContactToFirebase(data, user.uid, processingTime);
-      
+      const promises: Promise<any>[] = [
+        saveContactToFirebase(data, user.uid, processingTime)
+      ];
       if (isGoogleSheetsConnected) {
-        try {
-          await saveToSheet(data);
-        } catch (sheetErr) {
-          console.error("Failed to sync to Google Sheets:", sheetErr);
-        }
+        promises.push(
+          saveToSheet(data).catch((sheetErr) => {
+            console.error("Failed to sync to Google Sheets:", sheetErr);
+          })
+        );
       }
+      await Promise.all(promises);
 
       setAppState(AppState.SUCCESS);
       setTimeout(() => setAppState(AppState.IDLE), 3000);
@@ -194,7 +199,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans selection:bg-emerald-100 selection:text-emerald-900">
       <Header user={user} />
-      
+
       <main className="flex-grow container mx-auto px-4 py-6 md:py-8">
         {appState === AppState.IDLE && (
           <div className="max-w-2xl mx-auto text-center space-y-6 py-4">
@@ -207,17 +212,17 @@ const App: React.FC = () => {
                 Cloud Sync Active
               </div>
               <h2 className="text-xl md:text-2xl font-black text-[#003366] tracking-tight leading-tight uppercase">
-                MCCIA BIZSCAN <br/>
+                MCCIA BIZSCAN <br />
                 <span className="text-[#10b981]">AI POWERED BUSINESS CARD SCANNER</span>
               </h2>
               <p className="text-[11px] md:text-xs text-slate-500 max-w-md mx-auto font-medium">
-                Extraction session is active. All scanned data is securely <br/>
+                Extraction session is active. All scanned data is securely <br />
                 stored in the cloud folder assigned to this station.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-md mx-auto">
-              <button 
+              <button
                 onClick={() => setAppState(AppState.SCANNING)}
                 className="group flex flex-col items-center justify-center p-6 bg-white border border-slate-200 rounded-xl hover:border-[#10b981] hover:shadow-md transition-all duration-300"
               >
@@ -230,7 +235,7 @@ const App: React.FC = () => {
                 <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Single Extract</span>
               </button>
 
-              <button 
+              <button
                 onClick={() => fileInputRef.current?.click()}
                 className="group flex flex-col items-center justify-center p-6 bg-white border border-slate-200 rounded-xl hover:border-[#003366] hover:shadow-md transition-all duration-300"
               >
@@ -244,12 +249,12 @@ const App: React.FC = () => {
               </button>
             </div>
 
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
-              accept="image/*" 
-              multiple 
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
+              multiple
               onChange={handleFileUpload}
             />
 
@@ -270,11 +275,10 @@ const App: React.FC = () => {
               </div>
               <button
                 onClick={handleConnectGoogleSheets}
-                className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all duration-200 border ${
-                  isGoogleSheetsConnected
-                    ? 'border-emerald-100 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                    : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                }`}
+                className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all duration-200 border ${isGoogleSheetsConnected
+                  ? 'border-emerald-100 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                  : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                  }`}
               >
                 {isGoogleSheetsConnected ? 'Connected' : 'Connect Account'}
               </button>
@@ -302,7 +306,7 @@ const App: React.FC = () => {
         {appState === AppState.BATCH_PROCESSING && (
           <div className="flex flex-col items-center justify-center py-16 space-y-5 max-w-lg mx-auto text-center">
             <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden max-w-xs shadow-inner">
-              <div 
+              <div
                 className="bg-[#10b981] h-full transition-all duration-500"
                 style={{ width: `${(batchCurrent / batchTotal) * 100}%` }}
               ></div>
@@ -317,9 +321,9 @@ const App: React.FC = () => {
         )}
 
         {appState === AppState.REVIEW && scannedData && (
-          <ContactCard 
-            data={scannedData} 
-            onSave={handleSave} 
+          <ContactCard
+            data={scannedData}
+            onSave={handleSave}
             onCancel={() => setAppState(AppState.IDLE)}
             isSaving={isSaving}
           />
@@ -345,19 +349,19 @@ const App: React.FC = () => {
 
         {contacts.length > 0 && (
           <div className="mt-8 bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-            <ContactHistoryTable 
-              history={contacts} 
-              userName={user?.name} 
-              userEmail={user?.email} 
+            <ContactHistoryTable
+              history={contacts}
+              userName={user?.name}
+              userEmail={user?.email}
             />
           </div>
         )}
       </main>
 
       <footer className="bg-white border-t border-slate-50 py-4 text-center mt-auto">
-         <p className="text-[8px] text-slate-400 font-black uppercase tracking-[0.2em]">
-           © {new Date().getFullYear()} MCCIA Applied AI Studio • Secured Root Storage
-         </p>
+        <p className="text-[8px] text-slate-400 font-black uppercase tracking-[0.2em]">
+          © {new Date().getFullYear()} MCCIA Applied AI Studio • Secured Root Storage
+        </p>
       </footer>
     </div>
   );

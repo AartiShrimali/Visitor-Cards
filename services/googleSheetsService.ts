@@ -22,15 +22,16 @@ const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googlea
 let tokenClient: any;
 let gapiInited = false;
 let gisInited = false;
+let isSpreadsheetValidated = false;
 
 export const initGapiClient = async (): Promise<void> => {
   return new Promise((resolve, reject) => {
-    if(!window.gapi) {
+    if (!window.gapi) {
       // Graceful fallback if script fails to load
       reject("Google API script not loaded");
       return;
     }
-    
+
     window.gapi.load('client', async () => {
       try {
         await window.gapi.client.init({
@@ -47,11 +48,11 @@ export const initGapiClient = async (): Promise<void> => {
 
 export const initGisClient = (onTokenReceived: (tokenResponse: any) => void): void => {
   // Defensive check for Google Identity Services script
-  if(!window.google || !window.google.accounts) {
+  if (!window.google || !window.google.accounts) {
     console.warn("Google Identity Services script not loaded.");
     return;
   }
-  
+
   if (!CLIENT_ID) {
     console.warn("GOOGLE_CLIENT_ID is missing. OAuth features will be disabled. Check VITE_GOOGLE_CLIENT_ID in Vercel.");
     // We throw here so the App can catch it and enable Demo mode
@@ -66,17 +67,17 @@ export const initGisClient = (onTokenReceived: (tokenResponse: any) => void): vo
       scope: SCOPES,
       callback: async (resp: any) => {
         if (resp.error) {
-           console.error("OAuth Error:", resp);
-           if (resp.error.includes("redirect_uri_mismatch") || resp.error.includes("origin_mismatch")) {
-             alert(`Google Connection Failed.\n\nError: ${resp.error}\n\nFix: Go to Google Cloud Console > Credentials > OAuth Client.\nAdd this URI to "Authorized Javascript Origins":\n${window.location.origin}`);
-           }
-           return;
+          console.error("OAuth Error:", resp);
+          if (resp.error.includes("redirect_uri_mismatch") || resp.error.includes("origin_mismatch")) {
+            alert(`Google Connection Failed.\n\nError: ${resp.error}\n\nFix: Go to Google Cloud Console > Credentials > OAuth Client.\nAdd this URI to "Authorized Javascript Origins":\n${window.location.origin}`);
+          }
+          return;
         }
         onTokenReceived(resp);
       },
       error_callback: (err: any) => {
-         console.error("GIS Error Callback:", err);
-         alert("Popup closed or connection failed.");
+        console.error("GIS Error Callback:", err);
+        alert("Popup closed or connection failed.");
       }
     });
     gisInited = true;
@@ -86,9 +87,9 @@ export const initGisClient = (onTokenReceived: (tokenResponse: any) => void): vo
 };
 
 export const requestAccessToken = () => {
-  if(!tokenClient) {
-     if (!CLIENT_ID) throw new Error("MISSING_CLIENT_ID");
-     throw new Error("Google Sign-In not initialized. Refresh page.");
+  if (!tokenClient) {
+    if (!CLIENT_ID) throw new Error("MISSING_CLIENT_ID");
+    throw new Error("Google Sign-In not initialized. Refresh page.");
   }
   // Prompt the user to select an account and consent to the scopes
   tokenClient.requestAccessToken({ prompt: 'consent' });
@@ -97,10 +98,15 @@ export const requestAccessToken = () => {
 const findOrCreateSheet = async (sheetName: string): Promise<string> => {
   let spreadsheetId = localStorage.getItem('contacts_spreadsheet_id');
 
+  if (spreadsheetId && isSpreadsheetValidated) {
+    return spreadsheetId;
+  }
+
   if (spreadsheetId) {
     try {
       // Validate it exists
       await window.gapi.client.sheets.spreadsheets.get({ spreadsheetId });
+      isSpreadsheetValidated = true;
       return spreadsheetId;
     } catch (e) {
       console.warn("Stored spreadsheet ID invalid, creating new one.");
@@ -118,7 +124,7 @@ const findOrCreateSheet = async (sheetName: string): Promise<string> => {
 
   spreadsheetId = response.result.spreadsheetId;
   localStorage.setItem('contacts_spreadsheet_id', spreadsheetId || '');
-  
+
   // Add headers
   if (spreadsheetId) {
     await window.gapi.client.sheets.spreadsheets.values.update({
@@ -129,6 +135,7 @@ const findOrCreateSheet = async (sheetName: string): Promise<string> => {
         values: [['Name', 'Company', 'Designation', 'Email 1', 'Email 2', 'Phone 1', 'Phone 2', 'Address']]
       }
     });
+    isSpreadsheetValidated = true;
   }
 
   return spreadsheetId || '';
@@ -137,7 +144,7 @@ const findOrCreateSheet = async (sheetName: string): Promise<string> => {
 export const saveToSheet = async (data: ContactData): Promise<void> => {
   try {
     const spreadsheetId = await findOrCreateSheet('contacts');
-    
+
     const values = [
       [
         data.name,
