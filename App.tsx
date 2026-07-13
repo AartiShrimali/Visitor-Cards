@@ -135,18 +135,15 @@ const App: React.FC = () => {
           const result = await extractContactInfo(base64);
           const duration = Date.now() - start;
 
-          const batchPromises: Promise<any>[] = [
-            saveContactToFirebase(result, user.uid, duration)
-          ];
           const scriptUrl = (import.meta as any).env.VITE_GOOGLE_SCRIPT_URL;
           if (isGoogleSheetsConnected || scriptUrl) {
-            batchPromises.push(
-              saveToSheet(result).catch((sheetErr) => {
-                console.error(`Failed to save batch item ${i + 1} to Google Sheets:`, sheetErr);
-              })
-            );
+            saveToSheet(result).catch((sheetErr) => {
+              console.error(`Failed to save batch item ${i + 1} to Google Sheets:`, sheetErr);
+            });
           }
-          await Promise.all(batchPromises);
+          saveContactToFirebase(result, user.uid, duration).catch((err) => {
+            console.error(`Failed to save batch item ${i + 1} to Firebase:`, err);
+          });
         } catch (err) {
           console.error(`Item ${i + 1} failed:`, err);
         }
@@ -165,18 +162,15 @@ const App: React.FC = () => {
     const processingTime = Date.now() - startTimeRef.current;
 
     try {
-      const promises: Promise<any>[] = [
-        saveContactToFirebase(data, user.uid, processingTime)
-      ];
       const scriptUrl = (import.meta as any).env.VITE_GOOGLE_SCRIPT_URL;
       if (isGoogleSheetsConnected || scriptUrl) {
-        promises.push(
-          saveToSheet(data).catch((sheetErr) => {
-            console.error("Failed to sync to Google Sheets:", sheetErr);
-          })
-        );
+        saveToSheet(data).catch((sheetErr) => {
+          console.error("Failed to sync to Google Sheets:", sheetErr);
+        });
       }
-      await Promise.all(promises);
+      saveContactToFirebase(data, user.uid, processingTime).catch((err) => {
+        console.error("Failed to sync to Firebase:", err);
+      });
 
       setAppState(AppState.SUCCESS);
       setTimeout(() => setAppState(AppState.IDLE), 3000);
