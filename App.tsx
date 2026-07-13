@@ -138,7 +138,8 @@ const App: React.FC = () => {
           const batchPromises: Promise<any>[] = [
             saveContactToFirebase(result, user.uid, duration)
           ];
-          if (isGoogleSheetsConnected) {
+          const scriptUrl = (import.meta as any).env.VITE_GOOGLE_SCRIPT_URL;
+          if (isGoogleSheetsConnected || scriptUrl) {
             batchPromises.push(
               saveToSheet(result).catch((sheetErr) => {
                 console.error(`Failed to save batch item ${i + 1} to Google Sheets:`, sheetErr);
@@ -167,7 +168,8 @@ const App: React.FC = () => {
       const promises: Promise<any>[] = [
         saveContactToFirebase(data, user.uid, processingTime)
       ];
-      if (isGoogleSheetsConnected) {
+      const scriptUrl = (import.meta as any).env.VITE_GOOGLE_SCRIPT_URL;
+      if (isGoogleSheetsConnected || scriptUrl) {
         promises.push(
           saveToSheet(data).catch((sheetErr) => {
             console.error("Failed to sync to Google Sheets:", sheetErr);

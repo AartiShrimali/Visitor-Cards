@@ -142,6 +142,29 @@ const findOrCreateSheet = async (sheetName: string): Promise<string> => {
 };
 
 export const saveToSheet = async (data: ContactData): Promise<void> => {
+  const env = (import.meta as any).env;
+  const scriptUrl = env.VITE_GOOGLE_SCRIPT_URL;
+
+  if (scriptUrl) {
+    try {
+      await fetch(scriptUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'saveContact',
+          contact: data
+        })
+      });
+      console.log("Contact synced directly to Google Sheets via Apps Script.");
+      return;
+    } catch (scriptErr) {
+      console.warn("Direct Apps Script sync failed, falling back to GAPI client:", scriptErr);
+    }
+  }
+
   try {
     const spreadsheetId = await findOrCreateSheet('contacts');
 
