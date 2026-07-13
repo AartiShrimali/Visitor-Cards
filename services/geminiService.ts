@@ -56,7 +56,7 @@ export const extractContactInfo = async (base64Image: string): Promise<ContactDa
     const cleanBase64 = compressedImageUri.split(',')[1] || compressedImageUri;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: {
         parts: [
           {
@@ -85,7 +85,7 @@ export const extractContactInfo = async (base64Image: string): Promise<ContactDa
   } catch (error: any) {
     console.error("Gemini Extraction Error:", error);
     if (error.status === 429) {
-       throw new Error("Too many requests. Please wait a moment.");
+      throw new Error("Too many requests. Please wait a moment.");
     }
     throw error;
   }
