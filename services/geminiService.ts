@@ -56,7 +56,7 @@ export const extractContactInfo = async (base64Image: string): Promise<ContactDa
     const cleanBase64 = compressedImageUri.split(',')[1] || compressedImageUri;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.0-flash",
       contents: {
         parts: [
           {
