@@ -1,22 +1,5 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
 import { ContactData } from "../types";
-
-// Schema for the extracted data
-const contactSchema = {
-  type: Type.OBJECT,
-  properties: {
-    name: { type: Type.STRING, description: "Full name of the person" },
-    company_name: { type: Type.STRING, description: "Name of the company or organization" },
-    designation: { type: Type.STRING, description: "Job title or designation" },
-    email_1: { type: Type.STRING, description: "Primary email address" },
-    email_2: { type: Type.STRING, description: "Secondary email address (if any)" },
-    phone_1: { type: Type.STRING, description: "Primary phone number" },
-    phone_2: { type: Type.STRING, description: "Secondary phone number (if any)" },
-    address: { type: Type.STRING, description: "Full physical address" },
-  },
-  required: ["name", "company_name", "designation", "email_1", "phone_1", "address"],
-};
 
 const compressImage = (base64Str: string, maxWidth = 1024, quality = 0.8): Promise<string> => {
   return new Promise((resolve) => {
@@ -44,48 +27,88 @@ const compressImage = (base64Str: string, maxWidth = 1024, quality = 0.8): Promi
   });
 };
 
+const getGroqApiKey = () => {
+  const env = (import.meta as any).env;
+  if (env && env.VITE_GROQ_API_KEY) {
+    return env.VITE_GROQ_API_KEY;
+  }
+  if (typeof process !== 'undefined' && process.env.VITE_GROQ_API_KEY) {
+    return process.env.VITE_GROQ_API_KEY;
+  }
+  return '';
+};
+
 /**
- * Extracts contact information from an image using Gemini AI
+ * Extracts contact information from an image using Groq Cloud API
  */
 export const extractContactInfo = async (base64Image: string): Promise<ContactData> => {
-  // Always use process.env.API_KEY directly as per SDK guidelines
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = localStorage.getItem('VITE_GROQ_API_KEY') || getGroqApiKey();
+
+  if (!apiKey) {
+    throw new Error("GROQ_API_KEY_MISSING");
+  }
 
   try {
     const compressedImageUri = await compressImage(base64Image);
-    const cleanBase64 = compressedImageUri.split(',')[1] || compressedImageUri;
+    const base64Data = compressedImageUri.startsWith('data:') ? compressedImageUri : `data:image/jpeg;base64,${compressedImageUri}`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: {
-        parts: [
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "llama-3.2-11b-vision-preview",
+        messages: [
           {
-            inlineData: {
-              mimeType: "image/jpeg",
-              data: cleanBase64,
-            },
-          },
-          {
-            text: "Extract contact information from this ID card or business card. If a field is not found, return an empty string.",
-          },
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Extract contact information from this ID card or business card. Return ONLY a valid JSON object matching the schema below. Do not output any markdown code blocks, backticks, or extra conversational text. Return exactly a valid JSON parseable string.\n\nRequired JSON schema:\n{\n  \"name\": \"Full name of the person\",\n  \"company_name\": \"Name of the company or organization\",\n  \"designation\": \"Job title or designation\",\n  \"email_1\": \"Primary email address\",\n  \"email_2\": \"Secondary email address (if any)\",\n  \"phone_1\": \"Primary phone number\",\n  \"phone_2\": \"Secondary phone number (if any)\",\n  \"address\": \"Full physical address\"\n}\n\nIf a field is not found, keep it as empty string (\" \")."
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: base64Data
+                }
+              }
+            ]
+          }
         ],
-      },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: contactSchema,
-        systemInstruction: "You are an expert OCR and data extraction assistant. Your job is to accurately extract contact details from images of ID cards and business cards.",
-      },
+        response_format: {
+          type: "json_object"
+        },
+        temperature: 0.1
+      })
     });
 
-    if (response.text) {
-      return JSON.parse(response.text) as ContactData;
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("Groq API Error:", errText);
+      try {
+        const errJson = JSON.parse(errText);
+        if (response.status === 429) {
+          throw new Error("Too many requests on Groq API. Please wait a moment.");
+        }
+        throw new Error(errJson.error?.message || "Failed to call Groq API");
+      } catch {
+        throw new Error(`Groq API Error (${response.status}): ${errText}`);
+      }
+    }
+
+    const result = await response.json();
+    const content = result.choices?.[0]?.message?.content;
+    if (content) {
+      return JSON.parse(content.trim()) as ContactData;
     } else {
       throw new Error("No data extracted from the image.");
     }
   } catch (error: any) {
-    console.error("Gemini Extraction Error:", error);
-    if (error.status === 429) {
-      throw new Error("Too many requests. Please wait a moment.");
+    console.error("Groq Extraction Error:", error);
+    if (error.message === "GROQ_API_KEY_MISSING") {
+      throw new Error("Groq API Key is missing. Please configure it in the settings.");
     }
     throw error;
   }

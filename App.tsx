@@ -35,6 +35,9 @@ const App: React.FC = () => {
   const [isGoogleSheetsConnected, setIsGoogleSheetsConnected] = useState(false);
   const [isGapiLoaded, setIsGapiLoaded] = useState(false);
 
+  const [customApiKey, setCustomApiKey] = useState<string>(localStorage.getItem('VITE_GROQ_API_KEY') || '');
+  const [customApiKeyInput, setCustomApiKeyInput] = useState<string>('');
+
 
   const [batchTotal, setBatchTotal] = useState(0);
   const [batchCurrent, setBatchCurrent] = useState(0);
@@ -79,6 +82,14 @@ const App: React.FC = () => {
       requestAccessToken();
     } catch (error: any) {
       alert(error.message || "Failed to initialize Google Sheets Sync. Please check your configuration.");
+    }
+  };
+
+  const handleSaveApiKey = () => {
+    if (customApiKeyInput.trim()) {
+      localStorage.setItem('VITE_GROQ_API_KEY', customApiKeyInput.trim());
+      setCustomApiKey(customApiKeyInput.trim());
+      setCustomApiKeyInput('');
     }
   };
 
@@ -262,7 +273,7 @@ const App: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
-                <div className="text-left">
+                <div className="text-left font-sans">
                   <span className="text-xs font-black text-[#003366] block">Google Sheets Sync</span>
                   <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">
                     {isGoogleSheetsConnected ? 'Syncing active' : 'Not connected'}
@@ -280,6 +291,54 @@ const App: React.FC = () => {
               </button>
             </div>
 
+            {/* Groq API Key Configuration Card */}
+            <div className="max-w-md mx-auto bg-white border border-slate-200 rounded-xl p-4 flex flex-col gap-3 shadow-sm hover:shadow-md transition-all duration-300 mt-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${customApiKey ? 'bg-emerald-50' : 'bg-slate-100'}`}>
+                    <svg className={`w-4 h-4 ${customApiKey ? 'text-[#10b981]' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m-2-2v2m2 0V9m0 0a2 2 0 10-4 0v3H9v-3a2 2 0 00-2-2M7 7H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div className="text-left font-sans">
+                    <span className="text-xs font-black text-[#003366] block">Custom Groq API Key</span>
+                    <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">
+                      {customApiKey ? 'Using Custom Key' : 'Using env/No Key'}
+                    </span>
+                  </div>
+                </div>
+                {customApiKey && (
+                  <button
+                    onClick={() => {
+                      localStorage.removeItem('VITE_GROQ_API_KEY');
+                      setCustomApiKey('');
+                    }}
+                    className="text-[8px] font-black text-rose-600 uppercase tracking-widest hover:underline"
+                  >
+                    Clear Key
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  placeholder="Paste your Groq API Key (gsk_...)"
+                  value={customApiKeyInput}
+                  onChange={(e) => setCustomApiKeyInput(e.target.value)}
+                  className="flex-grow px-2 py-1.5 border border-slate-200 rounded-lg text-xs focus:border-[#003366] focus:ring-1 focus:ring-[#003366] outline-none"
+                />
+                <button
+                  onClick={handleSaveApiKey}
+                  className="px-3 py-1.5 bg-[#003366] hover:bg-slate-800 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-all duration-200"
+                >
+                  Save
+                </button>
+              </div>
+              <p className="text-[8px] text-slate-400 text-left font-medium">
+                Create a free key at <a href="https://console.groq.com/" target="_blank" rel="noreferrer" className="text-[#003366] font-bold hover:underline">Groq Console</a> override.
+              </p>
+            </div>
+
           </div>
         )}
 
@@ -294,7 +353,7 @@ const App: React.FC = () => {
             <div className="w-8 h-8 border-2 border-[#10b981] border-t-transparent rounded-full animate-spin"></div>
             <div>
               <h3 className="text-sm font-black text-[#003366]">Extracting Details...</h3>
-              <p className="text-[10px] text-slate-500 font-medium">Gemini AI is processing the image</p>
+              <p className="text-[10px] text-slate-500 font-medium">Groq Llama 3.2 Vision is processing the image</p>
             </div>
           </div>
         )}
@@ -339,6 +398,13 @@ const App: React.FC = () => {
           <div className="max-w-md mx-auto bg-white border border-red-100 p-6 rounded-xl text-center shadow-lg">
             <h3 className="text-sm font-black text-slate-800 uppercase tracking-tight">Process Error</h3>
             <p className="text-[10px] text-slate-500 mt-1 font-medium mb-4">{error}</p>
+            {(error.includes("Too many requests") || error.includes("rate limit") || error.includes("invalid_api_key") || error.includes("Groq")) && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-left mb-4 text-[10px] text-amber-800 font-medium animate-in slide-in-from-top-1">
+                <span className="font-bold">Recommendation:</span> Your Groq API key might be missing, invalid, or rate-limited.
+                You can create/manage your keys at <a href="https://console.groq.com/" target="_blank" rel="noreferrer" className="text-[#003366] font-bold hover:underline">Groq Console</a> and
+                paste it into the settings card on the home page to resume card scanning without limits.
+              </div>
+            )}
             <Button onClick={() => setAppState(AppState.IDLE)} className="w-full bg-[#003366] text-white py-2 text-[10px] font-bold rounded-lg">Try Again</Button>
           </div>
         )}
