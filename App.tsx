@@ -303,7 +303,9 @@ const App: React.FC = () => {
                   <div className="text-left font-sans">
                     <span className="text-xs font-black text-[#003366] block">Custom Groq API Key</span>
                     <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">
-                      {customApiKey ? 'Using Custom Key' : 'Using env/No Key'}
+                      {customApiKey
+                        ? `Using Custom Key (${customApiKey.slice(0, 7)}...${customApiKey.slice(-4)})`
+                        : 'Using env/No Key'}
                     </span>
                   </div>
                 </div>
@@ -322,7 +324,7 @@ const App: React.FC = () => {
               <div className="flex gap-2">
                 <input
                   type="password"
-                  placeholder="Paste your Groq API Key (gsk_...)"
+                  placeholder={customApiKey ? "Key is saved. Paste a new one to update..." : "Paste your Groq API Key (gsk_...)"}
                   value={customApiKeyInput}
                   onChange={(e) => setCustomApiKeyInput(e.target.value)}
                   className="flex-grow px-2 py-1.5 border border-slate-200 rounded-lg text-xs focus:border-[#003366] focus:ring-1 focus:ring-[#003366] outline-none"
